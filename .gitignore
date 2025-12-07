@@ -1,0 +1,10 @@
+venv/
+.env
+*.tsv
+*.db
+models/
+*.pkl
+__pycache__/
+*.ipynb
+.DS_Store
+*.csv

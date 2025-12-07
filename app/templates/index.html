@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pharmacovigilance - Drug Side Effect Predictor</title>
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container">
+            <a class="navbar-brand" href="/">
+                <i class="fas fa-pills me-2"></i>
+                Pharmacovigilance AI
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link active" href="#predict">Predict</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#insights">Insights</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#about">About</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <div class="hero-section">
+        <div class="container text-center">
+            <h1 class="display-4 fw-bold text-white mb-3">
+                AI-Powered Drug Side Effect Prediction
+            </h1>
+            <p class="lead text-white-50 mb-4">
+                Leveraging machine learning to predict adverse drug reactions based on drug characteristics
+            </p>
+            <div class="stats-row">
+                <div class="stat-box">
+                    <i class="fas fa-database"></i>
+                    <h3 id="stat-drugs">0</h3>
+                    <p>Drugs</p>
+                </div>
+                <div class="stat-box">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <h3 id="stat-side-effects">0</h3>
+                    <p>Side Effects</p>
+                </div>
+                <div class="stat-box">
+                    <i class="fas fa-chart-line"></i>
+                    <h3 id="stat-accuracy">0%</h3>
+                    <p>Model F1-Score</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="container my-5">
+        
+        <!-- Prediction Section -->
+        <section id="predict" class="mb-5">
+            <div class="card shadow-lg fade-in">
+                <div class="card-body p-5">
+                    <h2 class="card-title text-center mb-2">
+                        <i class="fas fa-search me-2 text-primary"></i>
+                        Search for a Drug
+                    </h2>
+                    <p class="text-center text-muted mb-4">Enter a drug name to predict potential side effects</p>
+                    
+                    <div class="row justify-content-center">
+                        <div class="col-md-8">
+                            <!-- Search Form -->
+                            <div class="search-container">
+                                <div class="input-group input-group-lg">
+                                    <span class="input-group-text">
+                                        <i class="fas fa-pills"></i>
+                                    </span>
+                                    <input 
+                                        type="text" 
+                                        class="form-control" 
+                                        id="drug-search-input"
+                                        placeholder="Type drug name (e.g., aspirin, ibuprofen...)"
+                                        autocomplete="off"
+                                    >
+                                    <button class="btn btn-primary" id="predict-btn" type="button">
+                                        <i class="fas fa-brain me-2"></i>Predict
+                                    </button>
+                                </div>
+                                
+                                <!-- Autocomplete dropdown -->
+                                <div id="autocomplete-results" class="autocomplete-dropdown"></div>
+                            </div>
+                            
+                            <!-- Loading Spinner -->
+                            <div id="loading-spinner" class="text-center mt-4" style="display: none;">
+                                <div class="spinner-border text-primary" role="status">
+                                    <span class="visually-hidden">Loading...</span>
+                                </div>
+                                <p class="mt-2 text-muted">Analyzing drug characteristics...</p>
+                            </div>
+                            
+                            <!-- Error Message -->
+                            <div id="error-message" class="alert alert-danger mt-4" style="display: none;"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Results Section -->
+        <section id="results" class="mb-5 fade-in" style="display: none;">
+            <div class="card shadow-lg">
+                <div class="card-header bg-success text-white">
+                    <h3 class="mb-0">
+                        <i class="fas fa-check-circle me-2"></i>
+                        Prediction Results
+                    </h3>
+                </div>
+                <div class="card-body p-4">
+                    <!-- Drug Info -->
+                    <div class="drug-info-box mb-4">
+                        <h4 id="result-drug-name" class="fw-bold">Drug Name</h4>
+                        <p class="text-muted mb-2">
+                            <strong>CID:</strong> <span id="result-cid"></span> |
+                            <strong>Model:</strong> <span id="result-model"></span>
+                        </p>
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle me-2"></i>
+                            <span id="result-summary"></span>
+                        </div>
+                    </div>
+                    
+                    <!-- Predicted Side Effects -->
+                    <h5 class="mb-3">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        Predicted Side Effects (<span id="total-predicted">0</span> total)
+                    </h5>
+                    
+                    <div id="side-effects-list" class="row">
+                        <!-- Side effect cards will be inserted here -->
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Insights Section -->
+        <section id="insights" class="mb-5">
+            <h2 class="text-center mb-5">
+                <i class="fas fa-chart-bar me-2"></i>
+                Model Performance & Insights
+            </h2>
+            
+            <div class="row">
+                <!-- Model Comparison Chart -->
+                <div class="col-md-6 mb-4">
+                    <div class="card shadow fade-in">
+                        <div class="card-header bg-primary text-white">
+                            <h5 class="mb-0">
+                                <i class="fas fa-balance-scale me-2"></i>
+                                Model Comparison (F1-Score)
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <canvas id="model-comparison-chart"></canvas>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Feature Importance Chart -->
+                <div class="col-md-6 mb-4">
+                    <div class="card shadow fade-in">
+                        <div class="card-header bg-primary text-white">
+                            <h5 class="mb-0">
+                                <i class="fas fa-star me-2"></i>
+                                Top Feature Importances
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <canvas id="feature-importance-chart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Top Side Effects -->
+            <div class="row mt-4">
+                <div class="col-12">
+                    <div class="card shadow fade-in">
+                        <div class="card-header bg-info text-white">
+                            <h5 class="mb-0">
+                                <i class="fas fa-list-ol me-2"></i>
+                                Most Common Side Effects in Database
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div id="top-side-effects-list" class="row">
+                                <!-- Will be populated dynamically -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- About Section -->
+        <section id="about" class="mb-5">
+            <div class="card shadow fade-in">
+                <div class="card-header bg-dark text-white">
+                    <h3 class="mb-0">
+                        <i class="fas fa-info-circle me-2"></i>
+                        About This Project
+                    </h3>
+                </div>
+                <div class="card-body p-4">
+                    <div class="row">
+                        <div class="col-md-8">
+                            <h5 class="text-primary mb-3">Multi-Label Classification for Pharmacovigilance</h5>
+                            <p class="lead">
+                                This web application uses advanced machine learning techniques to predict potential side effects
+                                of drugs based on their chemical and pharmacological characteristics (ATC codes and drug names).
+                            </p>
+                            
+                            <h6 class="mt-4 mb-3"><i class="fas fa-rocket me-2 text-primary"></i>Key Features:</h6>
+                            <ul class="list-unstyled">
+                                <li class="mb-2"><i class="fas fa-check-circle text-success me-2"></i><strong>Multi-Label Classification:</strong> Predicts multiple side effects simultaneously</li>
+                                <li class="mb-2"><i class="fas fa-check-circle text-success me-2"></i><strong>Model Comparison:</strong> Three models evaluated (Logistic Regression, Random Forest, MLP)</li>
+                                <li class="mb-2"><i class="fas fa-check-circle text-success me-2"></i><strong>Interpretability:</strong> Feature importance analysis reveals which drug characteristics drive predictions</li>
+                                <li class="mb-2"><i class="fas fa-check-circle text-success me-2"></i><strong>Real-time Inference:</strong> Instant predictions with probability scores</li>
+                            </ul>
+                        </div>
+                        <div class="col-md-4">
+                            <h6 class="mt-4 mb-3"><i class="fas fa-database me-2 text-info"></i>Data Sources:</h6>
+                            <ul class="list-unstyled">
+                                <li class="mb-2"><i class="fas fa-caret-right text-primary me-2"></i><strong>SIDER:</strong> Side Effect Resource</li>
+                                <li class="mb-2"><i class="fas fa-caret-right text-primary me-2"></i><strong>DrugBank:</strong> Drug database</li>
+                                <li class="mb-2"><i class="fas fa-caret-right text-primary me-2"></i><strong>ATC:</strong> Classification system</li>
+                                <li class="mb-2"><i class="fas fa-caret-right text-primary me-2"></i><strong>MedDRA:</strong> Medical dictionary</li>
+                            </ul>
+                        </div>
+                    </div>
+                    
+                    <div class="alert alert-warning mt-4">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        <strong>Disclaimer:</strong> This tool is for educational and research purposes only. 
+                        Always consult healthcare professionals for medical advice.
+                    </div>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-dark text-white text-center py-4 mt-5">
+        <div class="container">
+            <div class="row">
+                <div class="col-12 mb-3">
+                    <i class="fas fa-flask fa-2x mb-2" style="opacity: 0.8;"></i>
+                </div>
+            </div>
+            <p class="mb-2 fw-bold">
+                Pharmacovigilance AI - Capstone Project 2025
+            </p>
+            <p class="text-muted small mt-2 mb-0">
+                <i class="fab fa-python me-2"></i>Powered by Flask, scikit-learn, and Bootstrap
+            </p>
+            <p class="text-muted small mt-1">
+                <i class="fas fa-brain me-2"></i>Built with Machine Learning & Modern Web Technologies
+            </p>
+        </div>
+    </footer>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- Custom JS -->
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>
